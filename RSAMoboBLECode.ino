@@ -216,9 +216,6 @@ void loop() {
  * called when reading is being done by remote. 
  */
 void ReadCallBack(BLEDevice *central, BLECharacteristic c) {
-#ifdef BLE_SHOW_DATA 
-    Serial.println(F("Read call_Back. Central is reading"));
-#endif
     // no action only info
 }
 
@@ -230,9 +227,6 @@ void ReadCallBack(BLEDevice *central, BLECharacteristic c) {
  * Byte[1] = command / feedback
  */
 void WriteCallBack(BLEDevice *central, BLECharacteristic c) {
-#ifdef BLE_SHOW_DATA   
-  Serial.println(F("Central has written something."));
-#endif
 
   int lenc = c.valueLength();
   uint8_t *valuec=(uint8_t*) c.value();
@@ -243,20 +237,12 @@ void WriteCallBack(BLEDevice *central, BLECharacteristic c) {
     Serial.println(valuec[0],HEX);
     return;
   }
-  
-#ifdef BLE_SHOW_DATA 
-  Serial.print("Received command (HEX) 0x");
-  Serial.println(valuec[1]);
-#endif
 
   // for now we only use ONE command
   CentralCmd = valuec[1];
 
   switch (CentralCmd){
     case RECEIVED_OK:
-#ifdef BLE_SHOW_DATA 
-      Serial.println("RECEIVED_OK");
-#endif
       HandlePendingCmd();     // check which command / error we did sent
       break;
 
@@ -326,11 +312,6 @@ void CreateSendBlock(){
     Serial.println(BlockCounter);
   }
   else if (ret == 1) {
-  
-#ifdef BLE_SHOW_DATA 
-    Serial.println(F("Complete message had been sent before"));
-    Serial.println(F("No action now."));
-#endif
     SendCommand(REQ_INVALID);
   }
   else if (ret == 2) {
@@ -341,30 +322,6 @@ void CreateSendBlock(){
 }
 
 /*
- * send a complete message of X bytes broken down in block of max MTU size 
- * 
- * Message format
- * 
- * Block 0
- * Byte 0  = MagicNum
- * Byte 1  = MSB total message length (uint16_t)
- * Byte 2  = LSB total message length
- * Byte 3 =  block number (starting 0) (uint8_t)
- * Byte 4 =  MSB block data length  (excluding 2 bytes CRC) (uint16_t)
- * Byte 5 =  LSB block data length
- * byte 5 - N  data (N is MAX  MAXBLOCKSIZE -3)
- * Byte N +1 = MSB CRC on ALL previous bytes in block (uint16_t)
- * Byte N +2 = LSB CRC
- * 
- * 
- * blocks following
- * Byte 1  = current block number X (uint8_t)
- * Byte 2 =  MSB block data length  (excluding 2 bytes CRC) (uint16_t)
- * Byte 3 =  LSB block data length
- * Byte 4 - N  data (N is MAX  MAXBLOCKSIZE -3)
- * byte N +1 = MSB CRC on ALL previous bytes in block (uint16_t)
- * Byte N +2 = LSB CRC
- * 
  * Protocol :
  * 
  * peripheral                   central
@@ -390,12 +347,6 @@ void CreateSendBlock(){
  * add CRC
  * write block
  * write notification
- * 
- * @return 
- *  0 ; block created and send
- *  1 ; complete message had been sent before
- *  2 ; last block of the message has been sent
- * 
  */
 
 uint8_t CreateDataToSend(){
@@ -462,16 +413,6 @@ uint8_t CreateDataToSend(){
   // save for sending
   BlockContentLength = i;
   
-#ifdef BLE_SHOW_DATA 
-  Serial.println("Sending content: ");
-  // display Hex
-  for (int k = 0; k < i;k++){
-    Serial.print(BlockContent[k],HEX);
-    Serial.print(" ");
-  }
-  Serial.print("\nlength: ");
-  Serial.println(i);
-#endif
   SendBlock();
 
   // complete message has been sent now
@@ -534,9 +475,6 @@ void HandlePendingCmd() {
     case NEW_BLOCK_AVAILABLE:
     case REQ_INVALID:
     case RSP_BLOCKSIZE:
-#ifdef BLE_SHOW_DATA 
-      Serial.println("Previous command acknowledged");
-#endif
       break;
 
     default:
