@@ -103,20 +103,14 @@ static void rxCallback(byte * data, int dataLen, byte * senderMac)
 }
 
 void setup() {
-   Serial.begin(115200);
    delay(1000);
-   Serial.print("\nExample14 peripheral RW_notify_MTU. Compiled on: ");
-   Serial.println(__TIME__);
 
   ///////////////////////////////////////////////////
   // BLE SETUP START
   ///////////////////////////////////////////////////
-
-  //BLE.debug(Serial);         // enable display HCI messages
   
   // begin initialization
   if (!BLE.begin()) {
-    Serial.println(F("starting BLE failed! freeze\r"));
     while (1);
   }
 
@@ -166,10 +160,6 @@ void setup() {
     }
   }
   port1.setRxCallback(rxCallback);
-  
-  Serial.print(F("Peripheral ready to go with the name '"));
-  Serial.print(BLE_PERIPHERAL_NAME);
-  Serial.println("'");
 }
 
 void loop() {
@@ -185,8 +175,6 @@ void loop() {
   if (CurrentMTUSize != (uint8_t) BLE.readMTU())
   {
     CurrentMTUSize = (uint8_t) BLE.readMTU();
-    Serial.print("Using MTU / blocksize : ");
-    Serial.println(CurrentMTUSize);
   }
   
   // handle any keyboard input
@@ -228,8 +216,6 @@ void WriteCallBack(BLEDevice *central, BLECharacteristic c) {
 
   // check for correct packet start
   if (valuec[0] != MAGICNUM) {
-    Serial.print(F("Invalid magic number : 0x"));
-    Serial.println(valuec[0],HEX);
     return;
   }
 
@@ -271,23 +257,19 @@ void HandleCentralReq()
   }
   
   else if (CentralCmd == CANCEL_MESSAGE){
-    Serial.println(F("\nCancel current message."));
     TotalMessageLength = -1;
   }
  
   else if (CentralCmd == REQ_NEW_MESSAGE){
-    Serial.println(F("\nRequest new message."));
     TotalMessageLength = 0;
     CreateSendBlock();
   }
 
   else if (CentralCmd == REQ_BLOCKSIZE){
-    Serial.println(F("\nRequest blocksize\n"));
     SendCommand(RSP_BLOCKSIZE);
   }
 
   else if (CentralCmd == RCD_CMPLT_MSG){
-    Serial.println(F("\nCentral confirms receipt of total message\n"));
     TotalMessageLength = 0;
   }
 
@@ -303,16 +285,11 @@ void CreateSendBlock(){
   
   // if block of incomplete message has been sent
   if (ret == 0) {
-    Serial.print(F("Sent Block "));
-    Serial.println(BlockCounter);
   }
   else if (ret == 1) {
     SendCommand(REQ_INVALID);
   }
   else if (ret == 2) {
-    Serial.print(F("\nComplete message has now been sent in "));
-    Serial.print(BlockCounter);
-    Serial.println(F(" blocks."));
   }
 }
 
@@ -356,7 +333,6 @@ uint8_t CreateDataToSend(){
     BlockContent = (uint8_t *) malloc(CurrentMTUSize);
   
     if (! BlockContent) {
-      Serial.println(F("Can Not allocate memory. freeze\n"));
       while(1);
     }
   }
@@ -423,7 +399,6 @@ void SendBlock()
 {
   
   if (! BLE.connected()){
-    Serial.println(F("ERROR : NOT CONNECTED"));
     return;
   }
 
@@ -473,7 +448,6 @@ void HandlePendingCmd() {
       break;
 
     default:
-      Serial.println("Unexpected Receive_OK. Ignored");
   }
 
   PendingCommand = NO_COMMAND;
@@ -498,7 +472,6 @@ void handle_input(char c)
   switch (input[0]) {
     
     case '1' :    // start sending new message
-      Serial.println(F("Request new message"));
 
       if (PendingCommand == NO_COMMAND) {
         
@@ -507,27 +480,22 @@ void handle_input(char c)
          CreateDataToSend();       
         }
         else {
-          Serial.println(F("First send cancel current message"));
         }
       }
       else
-        Serial.println(F("Waiting on Received_OK from central"));
       break;
   
     case '2' :    // send command cancel
-      Serial.println(F("Cancel current message\n"));
       SendCommand(CANCEL_MESSAGE);
       break;
 
     case '3':     // disconnect
-      Serial.println(F("Disconnect from Central"));
       BLE.disconnect();
       // reset keyboard buffer
       inpcnt = 0;
       return;
       break;
     default :
-      Serial.print(F("Ignore unknown request: "));
       Serial.println(input[0]);
       break;
   }
@@ -540,9 +508,6 @@ void handle_input(char c)
 
 void display_menu()
 {
-  Serial.println(F("1.  Start sending new message\r"));
-  Serial.println(F("2.  Cancel current message\r"));
-  Serial.println(F("3.  Disconnect\r"));
 }
 
 /**
@@ -550,8 +515,6 @@ void display_menu()
  */
 void blePeripheralConnectHandler(BLEDevice central) {
   // central connected event handler
-  Serial.print("Connected event, central: ");
-  Serial.println(central.address());
   TotalMessageLength = 0;
   PendingCommand = NO_COMMAND;
 }
@@ -561,8 +524,6 @@ void blePeripheralConnectHandler(BLEDevice central) {
  */
 void blePeripheralDisconnectHandler(BLEDevice central) {
   // central disconnected event handler
-  Serial.print("Disconnected event, central: ");
-  Serial.println(central.address());
 
   // release memory if allocated
   if (BlockContent) free(BlockContent);
