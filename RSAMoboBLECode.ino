@@ -161,7 +161,7 @@ void setup() {
 }
 
 void loop() {
-  static uint8_t LoopCnt =0;
+  static uint8_t LoopCnt = 0;
   
   // wait for connection
   while (! BLE.connected()){
