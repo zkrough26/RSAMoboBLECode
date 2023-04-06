@@ -434,6 +434,7 @@ void HandlePendingCmd() {
     case RSP_BLOCKSIZE:
       break;
     default:
+      break;
   }
   PendingCommand = NO_COMMAND;
 }
