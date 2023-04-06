@@ -93,19 +93,19 @@ byte port1RecMAC[6];
 // SPE Callback
 ///////////////////////////////////////////////////////
 
-//static void rxCallback(byte * data, int dataLen, byte * senderMac)
-//{
-//    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-//    port1MessageSize = dataLen;
-//    for (int i = 0; i < sizeof(senderMac); i++)
-//    {
-//      port1RecMAC[i] = senderMac[i];
-//    }
-//    for (int i = 0; i < dataLen; i++)
-//    {
-//      port1RecBuffer[i] = data[i];
-//    }
-//}
+static void rxCallback(byte * data, int dataLen, byte * senderMac)
+{
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    port1MessageSize = dataLen;
+    for (int i = 0; i < sizeof(senderMac); i++)
+    {
+      port1RecMAC[i] = senderMac[i];
+    }
+    for (int i = 0; i < dataLen; i++)
+    {
+      port1RecBuffer[i] = data[i];
+    }
+}
 
 void setup() {
    Serial.begin(115200);
@@ -170,7 +170,7 @@ void setup() {
       delay(100);
     }
   }
-  //port1.setRxCallback(rxCallback);
+  port1.setRxCallback(rxCallback);
   
   Serial.print(F("Peripheral ready to go with the name '"));
   Serial.print(BLE_PERIPHERAL_NAME);
@@ -206,12 +206,6 @@ void loop() {
       HandleCentralReq();
       LoopCnt = 0;
     }
-  }
-
-  if (port1.getRxAvailable())
-  {
-    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-    port1MessageSize = port1.getRxData(port1RecBuffer, 1000, port1RecMAC);
   }
   
   delay(50);        // needed for BLE and don't hammer   
