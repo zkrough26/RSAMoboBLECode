@@ -29,14 +29,12 @@
 ///////////////////////////////////////////////////////
 uint8_t BlockCounter = 0;             // keep track of current block to send
 int16_t TotalMessageLength;           // keep track of total message bytes left to send
+uint16_t MessageCounter = 0;               // Iterator to keep track of data being copied into blocks
 uint8_t *BlockContent;
 uint16_t BlockContentLength;
 uint8_t PendingCommand;               // expect RECEIVED_OK from central on this command
 uint8_t CentralCmd;                   // commands/feedback received from central.
 uint8_t CurrentMTUSize = 0;           // This will hold the agreed MTU size
-
-// Base to create sliding complete message
-int MessageCounter = 0;
 
 char     input[10];                 // keyboard input buffer
 int      inpcnt = 0;                // keyboard input buffer length
@@ -44,7 +42,7 @@ int      inpcnt = 0;                // keyboard input buffer length
 ///////////////////////////////////////////////////////
 // BLE defines
 ///////////////////////////////////////////////////////
-const char BLE_PERIPHERAL_NAME[] = "Mobo";
+const char BLE_PERIPHERAL_NAME[] = "T42-DAD";
 
 #define SERVICE "9e400001-b5a3-f393-e0a9-e14e24dcca9e"
 
@@ -87,7 +85,7 @@ SinglePairEthernet port1;
 int port1MessageSize;
 byte port1RecBuffer[1000];
 byte port1MAC[6] = {0x00, 0xE0, 0x22, 0xFE, 0xDA, 0xCA};
-byte port1RecMAC[6];
+byte port1RecIdentifier;
 
 ///////////////////////////////////////////////////////
 // SPE Callback
@@ -97,10 +95,7 @@ static void rxCallback(byte * data, int dataLen, byte * senderMac)
 {
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     port1MessageSize = dataLen;
-    for (int i = 0; i < sizeof(senderMac); i++)
-    {
-      port1RecMAC[i] = senderMac[i];
-    }
+    port1RecIdentifier = senderMac[5];
     for (int i = 0; i < dataLen; i++)
     {
       port1RecBuffer[i] = data[i];
