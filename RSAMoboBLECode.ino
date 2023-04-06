@@ -86,7 +86,7 @@ SinglePairEthernet port1;
 
 int port1MessageSize;
 byte port1RecBuffer[1000];
-byte port1MAC[6] = {0x00, 0xE0, 0x22, 0xFE, 0xDA, 0xFF};
+byte port1MAC[6] = {0x00, 0xE0, 0x22, 0xFE, 0xDA, 0xCA};
 byte port1RecMAC[6];
 
 ///////////////////////////////////////////////////////
