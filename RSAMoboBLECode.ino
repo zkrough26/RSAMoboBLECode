@@ -21,28 +21,22 @@
 #define MAGIC_INVALID      11         // Central : Invalid first block
 #define ERR_INTERNAL       12         // Central : internal error
 
-// Uncomment to see progress / debug information
-//#define BLE_SHOW_DATA 1
-
 ///////////////////////////////////////////////////////
 // Program variables
 ///////////////////////////////////////////////////////
 uint8_t BlockCounter = 0;             // keep track of current block to send
 int16_t TotalMessageLength;           // keep track of total message bytes left to send
-uint16_t MessageCounter = 0;               // Iterator to keep track of data being copied into blocks
-uint8_t *BlockContent;
-uint16_t BlockContentLength;
+uint16_t MessageCounter = 0;          // Iterator to keep track of data being copied into blocks
+uint8_t *BlockContent;                // Byte array to store data of individual blocks of agreed MTU size
+uint16_t BlockContentLength;          // Length of data in each block
 uint8_t PendingCommand;               // expect RECEIVED_OK from central on this command
 uint8_t CentralCmd;                   // commands/feedback received from central.
 uint8_t CurrentMTUSize = 0;           // This will hold the agreed MTU size
 
-char     input[10];                 // keyboard input buffer
-int      inpcnt = 0;                // keyboard input buffer length
-
 ///////////////////////////////////////////////////////
 // BLE defines
 ///////////////////////////////////////////////////////
-const char BLE_PERIPHERAL_NAME[] = "T42-DAD";
+const char BLE_PERIPHERAL_NAME[] = "T42-DAD";  // Name that will be broadcast
 
 #define SERVICE "9e400001-b5a3-f393-e0a9-e14e24dcca9e"
 
@@ -103,7 +97,7 @@ static void rxCallback(byte * data, int dataLen, byte * senderMac)
 }
 
 void setup() {
-   delay(1000);
+   delay(1000);  // Give everything time to power up before starting
 
   ///////////////////////////////////////////////////
   // BLE SETUP START
@@ -160,6 +154,10 @@ void setup() {
     }
   }
   port1.setRxCallback(rxCallback);
+
+  ///////////////////////////////////////////////////
+  // SPE SETUP END
+  ///////////////////////////////////////////////////
 }
 
 void loop() {
@@ -175,11 +173,6 @@ void loop() {
   if (CurrentMTUSize != (uint8_t) BLE.readMTU())
   {
     CurrentMTUSize = (uint8_t) BLE.readMTU();
-  }
-  
-  // handle any keyboard input
-  if (Serial.available()) {
-    while (Serial.available()) handle_input(Serial.read());
   }
 
   if (CentralCmd != NO_COMMAND) {
@@ -199,7 +192,7 @@ void loop() {
  * called when reading is being done by remote. 
  */
 void ReadCallBack(BLEDevice *central, BLECharacteristic c) {
-    // no action only info
+    // no action needed, called when central is reading data sent by us
 }
 
 /**
@@ -276,10 +269,8 @@ void HandleCentralReq()
   CentralCmd = NO_COMMAND;
 }
 
-/**
- * create and send a block
- * 
- */
+
+// create and send a block
 void CreateSendBlock(){
   uint8_t ret = CreateDataToSend();
   
@@ -397,7 +388,6 @@ uint8_t CreateDataToSend(){
  */
 void SendBlock()
 {
-  
   if (! BLE.connected()){
     return;
   }
@@ -436,78 +426,16 @@ void SendCommand(uint8_t cmd){
  * we got a receive OK on previous command send by us
  */
 void HandlePendingCmd() {
-
   switch (PendingCommand){
-
     case CANCEL_MESSAGE:
           TotalMessageLength = 0;
-          // fall through
     case NEW_BLOCK_AVAILABLE:
     case REQ_INVALID:
     case RSP_BLOCKSIZE:
       break;
-
     default:
   }
-
   PendingCommand = NO_COMMAND;
-}
-
-
-/**
- * handle local keyboard input
- */
-void handle_input(char c)
-{
-  if (c == '\r') return;    // skip CR
-
-  if (c != '\n') {          // act on linefeed
-    input[inpcnt++] = c;
-    if (inpcnt < 9 ) return;
-  }
-
-  input[inpcnt] = 0x0;
-
-  // only the first character is used here
-  switch (input[0]) {
-    
-    case '1' :    // start sending new message
-
-      if (PendingCommand == NO_COMMAND) {
-        
-        if (TotalMessageLength < 0) {
-         TotalMessageLength = 0;
-         CreateDataToSend();       
-        }
-        else {
-        }
-      }
-      else
-      break;
-  
-    case '2' :    // send command cancel
-      SendCommand(CANCEL_MESSAGE);
-      break;
-
-    case '3':     // disconnect
-      BLE.disconnect();
-      // reset keyboard buffer
-      inpcnt = 0;
-      return;
-      break;
-    default :
-      Serial.println(input[0]);
-      break;
-  }
-  
-  display_menu();
-
-  // reset keyboard buffer
-  inpcnt = 0;
-}
-
-void display_menu()
-{
 }
 
 /**
