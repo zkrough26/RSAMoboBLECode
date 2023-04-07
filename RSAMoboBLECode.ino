@@ -79,22 +79,42 @@ SinglePairEthernet port1;
 int port1MessageSize;
 byte port1RecBuffer[1000];
 byte port1MAC[6] = {0x00, 0xE0, 0x22, 0xFE, 0xDA, 0xCA};
-byte port1RecIdentifier;
+byte port1RecMAC[6];
 
 ///////////////////////////////////////////////////////
-// SPE Callback
+// Packet Formatting Variables
 ///////////////////////////////////////////////////////
 
-static void rxCallback(byte * data, int dataLen, byte * senderMac)
-{
-    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-    port1MessageSize = dataLen;
-    port1RecIdentifier = senderMac[5];
-    for (int i = 0; i < dataLen; i++)
-    {
-      port1RecBuffer[i] = data[i];
-    }
-}
+#define PORT1 0
+#define PORT2 32
+#define PORT3 64
+#define PORT4 96
+
+#define DISCONNECTED   0
+#define CONNWITHDATA   8
+#define CONNWITHNODATA 16
+#define MESSAGE        24
+
+#define TEMPSENS  0
+#define HUMSENS   1
+#define VIBSENS   2
+#define SOUNDSENS 3
+#define LOWBATT   4
+#define OTHERERR  5
+#define COLLSTOP  6
+#define COLLSTART 7
+
+byte port1Formatted[1275];
+byte port2Formatted[1275];
+byte port3Formatted[1275];
+byte port4Formatted[1275];
+
+byte port1Header = 0;
+byte port2Header = 0;
+byte port3Header = 0;
+byte port4Header = 0;
+
+int port1FormattedSize, port2FormattedSize, port3FormattedSize, port4FormattedSize;
 
 void setup() {
    delay(1000);  // Give everything time to power up before starting
@@ -105,6 +125,7 @@ void setup() {
   
   // begin initialization
   if (!BLE.begin()) {
+    digitalWrite(LED_BUILTIN, HIGH);
     while (1);
   }
 
@@ -153,7 +174,6 @@ void setup() {
       delay(100);
     }
   }
-  port1.setRxCallback(rxCallback);
 
   ///////////////////////////////////////////////////
   // SPE SETUP END
@@ -163,28 +183,37 @@ void setup() {
 void loop() {
   static uint8_t LoopCnt = 0;
   
-  // wait for connection
+  // Wait for Connection
   while (! BLE.connected()){
     BLE.poll();
-    delay(500);     // don't hammer
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    delay(500);  // Needed for BLE 
   }
 
-  // this can be updated after connect by the client / central
+  // Can be updated after connection by the client / central
   if (CurrentMTUSize != (uint8_t) BLE.readMTU())
   {
     CurrentMTUSize = (uint8_t) BLE.readMTU();
   }
 
-  if (CentralCmd != NO_COMMAND) {
-
-    // wait a couple of BLE.poll() before acting (seems to be needed ??)
+  if (CentralCmd != NO_COMMAND) 
+  {
     if (LoopCnt++ > 3) {
       HandleCentralReq();
       LoopCnt = 0;
     }
   }
+
+  if (port1.getLinkStatus())
+  {
+    if (port1.getRxAvailable())
+    {
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      port1MessageSize = port1.getRxData(port1RecBuffer, 1000, port1RecMAC);
+    }
+  }
   
-  delay(50);        // needed for BLE and don't hammer   
+  delay(50);  // Needed for BLE 
   BLE.poll();
 }
 
@@ -192,7 +221,7 @@ void loop() {
  * called when reading is being done by remote. 
  */
 void ReadCallBack(BLEDevice *central, BLECharacteristic c) {
-    // no action needed, called when central is reading data sent by us
+    // No action needed, called when central is reading data sent by us
 }
 
 /**
@@ -312,7 +341,63 @@ void CreateSendBlock(){
  * write notification
  */
 
+void ConvertToPacketStruct()
+{
+  port1Header = 0;
+  memset(port1Formatted, 0, sizeof(port1Formatted));
+  if(port1.getLinkStatus())
+  {
+    port1Header = port1Header | PORT1;
+    if ((port1MessageSize > 0) && (port1MessageSize <= 512))
+    {
+      port1Header = port1Header | CONNWITHDATA;
+    }
+    else
+    {
+      port1Header = port1Header | CONNWITHNODATA;
+    }
+    switch (port1RecMAC[5])
+    {
+      case 0:
+        port1Header = port1Header | TEMPSENS;
+        break;
+      case 1:
+        port1Header = port1Header | HUMSENS;
+        break;
+      case 2:
+        port1Header = port1Header | VIBSENS;
+        break;
+      case 3:
+        port1Header = port1Header | SOUNDSENS;
+        break;
+      default:
+        port1Header = port1Header | OTHERERR; 
+    }
+    if ((port1RecMAC[5] == 2) || (port1RecMAC[5] == 3))
+    {
+      for (int i = 0; i < (port1MessageSize / 2) - 1; i++)
+      {
+        port1Formatted[i * 5] = port1Header;
+        port1Formatted[(i * 5) + 1] = i;
+        port1Formatted[(i * 5) + 2] = port1RecBuffer[i * 2];
+        port1Formatted[(i * 5) + 3] = port1RecBuffer[(i * 2) + 1];
+        port1Formatted[(i * 5) + 4] = 255;
+      }
+      port1FormattedSize = sizeof(port1Formatted);
+    }
+  }
+  else
+  {
+    port1Header = port1Header | PORT1;
+    port1Header = port1Header | DISCONNECTED;
+    port1Formatted[0] = port1Header;
+    port1Formatted[4] = 255;
+    port1FormattedSize = 5;
+  }
+}
+
 uint8_t CreateDataToSend(){
+
   int16_t i = 0;
 
   // complete message had been sent already
@@ -331,9 +416,11 @@ uint8_t CreateDataToSend(){
   // if start of new message
   if (TotalMessageLength == 0) {
 
+    ConvertToPacketStruct();
+
     BlockContent[i++] = MAGICNUM;                       // set magicnum
 
-    TotalMessageLength = port1MessageSize;
+    TotalMessageLength = port1FormattedSize;
 
     BlockContent[i++] = TotalMessageLength >> 8 & 0xff;  // set MSB
     BlockContent[i++] = TotalMessageLength & 0xff;       // set LSB
@@ -358,7 +445,7 @@ uint8_t CreateDataToSend(){
   for (; i < CurrentMTUSize - 2 && TotalMessageLength-- > 0 ;i++) {
 
    // copy content to block
-   BlockContent[i] = port1RecBuffer[MessageCounter++];
+   BlockContent[i] = port1Formatted[MessageCounter++];
   }
 
   // add block length (excluding 2 bytes CRC)
