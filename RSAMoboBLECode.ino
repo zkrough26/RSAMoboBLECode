@@ -120,6 +120,7 @@ byte port1MAC[6] = {0x00, 0xE0, 0x22, 0xFE, 0xDA, 0xCA};
 byte port1RecMAC[6];
 bool port1LinkStatus = false;
 bool port1FirstPacket = true;
+bool port1SendDiscon = false;
 ///////////////////////////
 //  SPE Port2 Var/Def
 ///////////////////////////
@@ -132,6 +133,7 @@ byte port2MAC[6] = {0x00, 0xE0, 0x22, 0xFE, 0xDA, 0xCA};
 byte port2RecMAC[6];
 bool port2LinkStatus = false;
 bool port2FirstPacket = true;
+bool port2SendDiscon = false;
 ////////////////////////////
 //  END All SPE Port Var/Def
 ////////////////////////////
@@ -196,6 +198,7 @@ void port1LinkCallback(bool linkStatus)
     }
     else {
       port1DataReady = false;
+      port1SendDiscon = true;
     }
 }
 void port2LinkCallback(bool linkStatus)
@@ -205,6 +208,7 @@ void port2LinkCallback(bool linkStatus)
       port2FirstPacket = true;
     }
     else {
+      port2DataReady = false;
       port2DataReady = false;
     }
 }
@@ -249,12 +253,16 @@ void loop() {
   {
     if(port1FirstPacket)
     {
+      for (int i = 0; i < 5; i++)
+    {
       Bluetooth.write(PORT1 | CONNWITHNODATA | port1RecMAC[5]);
       Bluetooth.write((byte)0);
       Bluetooth.write((byte)0);
       Bluetooth.write((byte)0);
       Bluetooth.write((byte)255);
-      port1FirstPacket = false;
+      port1SendDiscon = false;
+      delay(50);
+    }
     }
     for(int i = 0; i < port1FormattedSize; i++)
     {
@@ -263,13 +271,18 @@ void loop() {
     }
     port1DataReady = false;
   }
-  else
+  if (port1SendDiscon)
   {
-    Bluetooth.write(PORT1 | DISCONNECTED | port1RecMAC[5]);
-    Bluetooth.write((byte)0);
-    Bluetooth.write((byte)0);
-    Bluetooth.write((byte)0);
-    Bluetooth.write((byte)255);
+    for (int i = 0; i < 5; i++)
+    {
+      Bluetooth.write(PORT1 | DISCONNECTED | port1RecMAC[5]);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)255);
+      port1SendDiscon = false;
+      delay(50);
+    }
   }
   
   unsigned long now = millis();
