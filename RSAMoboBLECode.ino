@@ -191,17 +191,21 @@ static void port2RxCallback(byte * data, int dataLen, byte * senderMac)
 void port1LinkCallback(bool linkStatus)
 {
     port1LinkStatus = linkStatus;
-    if (port1LinkStatus)
-    {
+    if (port1LinkStatus) {
       port1FirstPacket = true;
+    }
+    else {
+      port1DataReady = false;
     }
 }
 void port2LinkCallback(bool linkStatus)
 {
     port2LinkStatus = linkStatus;
-    if (port2LinkStatus)
-    {
+    if (port2LinkStatus) {
       port2FirstPacket = true;
+    }
+    else {
+      port2DataReady = false;
     }
 }
 ///////////////////////////
