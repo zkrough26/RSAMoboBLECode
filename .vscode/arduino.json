@@ -1,6 +1,0 @@
-{
-    "configuration": "svl_baud=921600,loader=sparkfun_svl",
-    "board": "SparkFun:apollo3:amap3micromod",
-    "programmer": "ambiq_sbl",
-    "port": "COM8"
-}
