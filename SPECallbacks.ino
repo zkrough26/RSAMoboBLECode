@@ -83,33 +83,3 @@ static void port4RxCallback(byte * data, int dataLen, byte * senderMac)
 ///////////////////////////
 //  END SPE rxCallbacks
 ///////////////////////////
-
-///////////////////////////
-// SPE Per Port Link
-//  Status Callback
-///////////////////////////
-void port1LinkCallback(bool linkStatus)
-{
-    port1LinkStatus = linkStatus;
-    if (port1LinkStatus) {
-      port1FirstPacket = true;
-    }
-    else {
-      port1DataReady = false;
-      port1SendDiscon = true;
-    }
-}
-void port2LinkCallback(bool linkStatus)
-{
-    port2LinkStatus = linkStatus;
-    if (port2LinkStatus) {
-      port2FirstPacket = true;
-    }
-    else {
-      port2DataReady = false;
-      port2SendDiscon = true;
-    }
-}
-///////////////////////////
-// END SPE Link callback
-///////////////////////////
