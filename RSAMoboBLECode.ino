@@ -103,6 +103,16 @@ byte port2Formatted[1275];
 byte port2Header = 0;
 int port2FormattedSize;
 bool port2DataReady = false;
+// Port 3
+byte port3Formatted[1275];
+byte port3Header = 0;
+int port3FormattedSize;
+bool port3DataReady = false;
+// Port 4
+byte port4Formatted[1275];
+byte port4Header = 0;
+int port4FormattedSize;
+bool port4DataReady = false;
 ///////////////////////////
 //  END Packaging Variables
 ///////////////////////////
@@ -134,6 +144,32 @@ byte port2RecMAC[6];
 bool port2LinkStatus = false;
 bool port2FirstPacket = true;
 bool port2SendDiscon = false;
+///////////////////////////
+//  SPE Port3 Var/Def
+///////////////////////////
+#define port3CS G4
+#define port3INT G5
+SinglePairEthernet port3;
+int port3MessageSize;
+byte port3RecBuffer[1000];
+byte port3MAC[6] = {0x00, 0xE0, 0x22, 0xFE, 0xDA, 0xCA};
+byte port3RecMAC[6];
+bool port3LinkStatus = false;
+bool port3FirstPacket = true;
+bool port3SendDiscon = false;
+///////////////////////////
+//  SPE Port2 Var/Def
+///////////////////////////
+#define port2CS G6
+#define port2INT G7
+SinglePairEthernet port4;
+int port4MessageSize;
+byte port4RecBuffer[1000];
+byte port4MAC[6] = {0x00, 0xE0, 0x22, 0xFE, 0xDA, 0xCA};
+byte port4RecMAC[6];
+bool port4LinkStatus = false;
+bool port4FirstPacket = true;
+bool port4SendDiscon = false;
 ////////////////////////////
 //  END All SPE Port Var/Def
 ////////////////////////////
@@ -157,7 +193,7 @@ static void port1RxCallback(byte * data, int dataLen, byte * senderMac)
     {
       port1RecBuffer[i] = data[i];
     }
-    ConvertToPacketStruct();
+    ConvertToPacketStruct(1);
     port1DataReady = true;
     interrupts();
   }
@@ -177,8 +213,48 @@ static void port2RxCallback(byte * data, int dataLen, byte * senderMac)
     {
       port2RecBuffer[i] = data[i];
     }
-    ConvertToPacketStruct();
+    ConvertToPacketStruct(2);
     port2DataReady = true;
+    interrupts();
+  }
+}
+
+static void port3RxCallback(byte * data, int dataLen, byte * senderMac)
+{
+  if (!port3DataReady)
+  {
+    noInterrupts();
+    port3MessageSize = dataLen;
+    for(int i = 0; i < 6; i++)
+    {
+      port3RecMAC[i] = senderMac[i];
+    }
+    for(int i = 0; i < dataLen; i++)
+    {
+      port3RecBuffer[i] = data[i];
+    }
+    ConvertToPacketStruct(3);
+    port3DataReady = true;
+    interrupts();
+  }
+}
+
+static void port4RxCallback(byte * data, int dataLen, byte * senderMac)
+{
+  if(!port4DataReady)
+  {
+    noInterrupts();
+    port4MessageSize = dataLen;
+    for(int i = 0; i < 6; i++)
+    {
+      port4RecMAC[i] = senderMac[i];
+    }
+    for(int i = 0; i < dataLen; i++)
+    {
+      port4RecBuffer[i] = data[i];
+    }
+    ConvertToPacketStruct(4);
+    port4DataReady = true;
     interrupts();
   }
 }
@@ -245,24 +321,6 @@ void setup() {
   /////////////////////////
   // END SPE Port 1 Init
   /////////////////////////
-  /////////////////////////
-  // SPE Port 2 Init
-  /////////////////////////
-  if (!port2.begin(port2MAC, LED_BUILTIN, port2INT, RST, port2CS))
-  {
-    while(1)
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(100);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(100);
-    }
-  }
-  port2.setRxCallback(port2RxCallback);
-  port2.setLinkCallback(port2LinkCallback);
-  //////////////////////////
-  // END SPE Port 2 Init
-  //////////////////////////
 }
 
 void loop() {
@@ -347,7 +405,7 @@ void loop() {
   }
 }
 
-void ConvertToPacketStruct()
+void ConvertToPacketStruct(int port)
 { 
   port1Header = 0;
   port1FormattedSize = 0;
@@ -415,74 +473,5 @@ void ConvertToPacketStruct()
     port1Formatted[3] = 0;
     port1Formatted[4] = 255;
     port1FormattedSize = 5;
-  }
-
-
-  port2Header = 0;
-  port2FormattedSize = 0;
-  memset(port2Formatted, 0, sizeof(port2Formatted));
-  if(port2LinkStatus)
-  {
-    port2Header = port2Header | PORT2;
-    if ((port2MessageSize > 0) && (port2MessageSize <= 512))
-    {
-      port2Header = port2Header | CONNWITHDATA;
-    }
-    else
-    {
-      port2Header = port2Header | CONNWITHNODATA;
-    }
-    switch (port2RecMAC[5])
-    {
-      case 0:
-        break;
-      case 1:
-        break;
-      case 2:
-        port2Header = port2Header | VIBSENS;
-        break;
-      case 3:
-        port2Header = port2Header | SOUNDSENS;
-        break;
-      default:
-        port2Header = port2Header | OTHERERR; 
-    }
-    if ((port2RecMAC[5] == 2) || (port2RecMAC[5] == 3))
-    {
-      for (int i = 0; i < (port2MessageSize / 2) - 1; i++)
-      {
-        port2Formatted[i * 5] = port2Header;
-        port2Formatted[(i * 5) + 1] = i;
-        port2Formatted[(i * 5) + 2] = port2RecBuffer[i * 2];
-        port2Formatted[(i * 5) + 3] = port2RecBuffer[(i * 2) + 1];
-        port2Formatted[(i * 5) + 4] = 255;
-      }
-      port2FormattedSize = sizeof(port2Formatted);
-    }
-    if (port2RecMAC[5] == 1)
-    {
-      port2Formatted[0] = port2Header | HUMSENS;
-      port2Formatted[1] = 0;
-      port2Formatted[2] = port2RecBuffer[0];
-      port2Formatted[3] = 0;
-      port2Formatted[4] = 255;
-      port2Formatted[5] = port2Header | TEMPSENS;
-      port2Formatted[6] = 0;
-      port2Formatted[7] = port2RecBuffer[1];
-      port2Formatted[8] = 0;
-      port2Formatted[9] = 255;
-      port2FormattedSize = 10;
-    }
-  }
-  else
-  {
-    port2Header = port2Header | PORT2;
-    port2Header = port2Header | DISCONNECTED;
-    port2Formatted[0] = port2Header;
-    port2Formatted[1] = 0;
-    port2Formatted[2] = 0;
-    port2Formatted[3] = 0;
-    port2Formatted[4] = 255;
-    port2FormattedSize = 5;
   }
 }
