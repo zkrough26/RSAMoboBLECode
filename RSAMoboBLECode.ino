@@ -209,7 +209,7 @@ void port2LinkCallback(bool linkStatus)
     }
     else {
       port2DataReady = false;
-      port2DataReady = false;
+      port2SendDiscon = true;
     }
 }
 ///////////////////////////
@@ -245,6 +245,24 @@ void setup() {
   /////////////////////////
   // END SPE Port 1 Init
   /////////////////////////
+  /////////////////////////
+  // SPE Port 2 Init
+  /////////////////////////
+  if (!port2.begin(port2MAC, LED_BUILTIN, port2INT, RST, port2CS))
+  {
+    while(1)
+    {
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(100);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(100);
+    }
+  }
+  port2.setRxCallback(port2RxCallback);
+  port2.setLinkCallback(port2LinkCallback);
+  //////////////////////////
+  // END SPE Port 2 Init
+  //////////////////////////
 }
 
 void loop() {
@@ -281,6 +299,42 @@ void loop() {
       Bluetooth.write((byte)0);
       Bluetooth.write((byte)255);
       port1SendDiscon = false;
+      delay(50);
+    }
+  }
+
+  if (port2DataReady && port2LinkStatus)
+  {
+    if(port2FirstPacket)
+    {
+      for (int i = 0; i < 5; i++)
+    {
+      Bluetooth.write(PORT2 | CONNWITHNODATA | port2RecMAC[5]);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)255);
+      port2SendDiscon = false;
+      delay(50);
+    }
+    }
+    for(int i = 0; i < port2FormattedSize; i++)
+    {
+      Bluetooth.write(port2Formatted[i]);
+      delay(1);
+    }
+    port2DataReady = false;
+  }
+  if (port2SendDiscon)
+  {
+    for (int i = 0; i < 5; i++)
+    {
+      Bluetooth.write(PORT2 | DISCONNECTED | port2RecMAC[5]);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)0);
+      Bluetooth.write((byte)255);
+      port2SendDiscon = false;
       delay(50);
     }
   }
@@ -361,5 +415,74 @@ void ConvertToPacketStruct()
     port1Formatted[3] = 0;
     port1Formatted[4] = 255;
     port1FormattedSize = 5;
+  }
+
+
+  port2Header = 0;
+  port2FormattedSize = 0;
+  memset(port2Formatted, 0, sizeof(port2Formatted));
+  if(port2LinkStatus)
+  {
+    port2Header = port2Header | PORT2;
+    if ((port2MessageSize > 0) && (port2MessageSize <= 512))
+    {
+      port2Header = port2Header | CONNWITHDATA;
+    }
+    else
+    {
+      port2Header = port2Header | CONNWITHNODATA;
+    }
+    switch (port2RecMAC[5])
+    {
+      case 0:
+        break;
+      case 1:
+        break;
+      case 2:
+        port2Header = port2Header | VIBSENS;
+        break;
+      case 3:
+        port2Header = port2Header | SOUNDSENS;
+        break;
+      default:
+        port2Header = port2Header | OTHERERR; 
+    }
+    if ((port2RecMAC[5] == 2) || (port2RecMAC[5] == 3))
+    {
+      for (int i = 0; i < (port2MessageSize / 2) - 1; i++)
+      {
+        port2Formatted[i * 5] = port2Header;
+        port2Formatted[(i * 5) + 1] = i;
+        port2Formatted[(i * 5) + 2] = port2RecBuffer[i * 2];
+        port2Formatted[(i * 5) + 3] = port2RecBuffer[(i * 2) + 1];
+        port2Formatted[(i * 5) + 4] = 255;
+      }
+      port2FormattedSize = sizeof(port2Formatted);
+    }
+    if (port2RecMAC[5] == 1)
+    {
+      port2Formatted[0] = port2Header | HUMSENS;
+      port2Formatted[1] = 0;
+      port2Formatted[2] = port2RecBuffer[0];
+      port2Formatted[3] = 0;
+      port2Formatted[4] = 255;
+      port2Formatted[5] = port2Header | TEMPSENS;
+      port2Formatted[6] = 0;
+      port2Formatted[7] = port2RecBuffer[1];
+      port2Formatted[8] = 0;
+      port2Formatted[9] = 255;
+      port2FormattedSize = 10;
+    }
+  }
+  else
+  {
+    port2Header = port2Header | PORT2;
+    port2Header = port2Header | DISCONNECTED;
+    port2Formatted[0] = port2Header;
+    port2Formatted[1] = 0;
+    port2Formatted[2] = 0;
+    port2Formatted[3] = 0;
+    port2Formatted[4] = 255;
+    port2FormattedSize = 5;
   }
 }
