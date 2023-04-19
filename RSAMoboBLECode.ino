@@ -66,7 +66,7 @@ void loop() {
 
   unsigned long now = millis();
   if(now - lastBlink >= 1000)
-  {;
+  {
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); 
     lastBlink = now;
   }

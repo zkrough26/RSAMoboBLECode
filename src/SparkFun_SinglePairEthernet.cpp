@@ -90,6 +90,7 @@ void SinglePairEthernet::linkCallback(void *pCBParam, uint32_t Event, void *pArg
 
 bool SinglePairEthernet::begin(uint8_t *mac, uint8_t cs_pin)
 {
+    linkStatus = ADI_ETH_LINK_STATUS_DOWN;
     adi_eth_Result_e result;
 
     if(mac)

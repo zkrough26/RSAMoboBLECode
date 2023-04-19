@@ -5,7 +5,6 @@ static void port1RxCallback(byte * data, int dataLen, byte * senderMac)
 {
   if (!port1DataReady)
   {
-    noInterrupts();
     port1MessageSize = dataLen;
     for(int i = 0; i < 6; i++)
     {
@@ -17,7 +16,6 @@ static void port1RxCallback(byte * data, int dataLen, byte * senderMac)
     }
     ConvertToPacketStruct(1);
     port1DataReady = true;
-    interrupts();
   }
 }
 
@@ -25,7 +23,6 @@ static void port2RxCallback(byte * data, int dataLen, byte * senderMac)
 {
   if(!port2DataReady)
   {
-    noInterrupts();
     port2MessageSize = dataLen;
     for(int i = 0; i < 6; i++)
     {
@@ -37,7 +34,6 @@ static void port2RxCallback(byte * data, int dataLen, byte * senderMac)
     }
     ConvertToPacketStruct(2);
     port2DataReady = true;
-    interrupts();
   }
 }
 
@@ -45,7 +41,6 @@ static void port3RxCallback(byte * data, int dataLen, byte * senderMac)
 {
   if (!port3DataReady)
   {
-    noInterrupts();
     port3MessageSize = dataLen;
     for(int i = 0; i < 6; i++)
     {
@@ -57,7 +52,6 @@ static void port3RxCallback(byte * data, int dataLen, byte * senderMac)
     }
     ConvertToPacketStruct(3);
     port3DataReady = true;
-    interrupts();
   }
 }
 
@@ -65,7 +59,6 @@ static void port4RxCallback(byte * data, int dataLen, byte * senderMac)
 {
   if(!port4DataReady)
   {
-    noInterrupts();
     port4MessageSize = dataLen;
     for(int i = 0; i < 6; i++)
     {
@@ -77,7 +70,6 @@ static void port4RxCallback(byte * data, int dataLen, byte * senderMac)
     }
     ConvertToPacketStruct(4);
     port4DataReady = true;
-    interrupts();
   }
 }
 ///////////////////////////
